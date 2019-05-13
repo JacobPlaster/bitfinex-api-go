@@ -31,6 +31,8 @@ type SubscriptionRequest struct {
 	Pair      string `json:"pair,omitempty"`
 }
 
+const MaxChannels = 25
+
 func (s *SubscriptionRequest) String() string {
 	if s.Key == "" && s.Channel != "" && s.Symbol != "" {
 		return fmt.Sprintf("%s %s", s.Channel, s.Symbol)
@@ -212,12 +214,15 @@ func (s *subscriptions) ListenDisconnect() <-chan error {
 	return s.hbDisconnect
 }
 
-func (s *subscriptions) add(sub *SubscriptionRequest) *subscription {
+func (s *subscriptions) add(sub *SubscriptionRequest) (*subscription, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	if len(s.subsByChanID) >= MaxChannels {
+		return nil, fmt.Errorf("Max subscription channel count (%v) reached", MaxChannels)
+	}
 	subscription := newSubscription(sub)
 	s.subsBySubID[sub.SubID] = subscription
-	return subscription
+	return subscription, nil
 }
 
 func (s *subscriptions) removeByChannelID(chanID int64) error {
